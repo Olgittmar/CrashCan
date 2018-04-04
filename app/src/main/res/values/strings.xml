@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">CrashCan</string>
+    <string name="errorMessage">Uknown error has occurred</string>
+    <string name="start_game">Start Game</string>
+</resources>
