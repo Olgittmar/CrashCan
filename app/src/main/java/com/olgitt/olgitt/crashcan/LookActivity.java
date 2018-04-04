@@ -30,9 +30,7 @@ public class LookActivity extends Activity {
 
         //init surfaceView
         setContentView(R.layout.activity_look);
-        mSurfaceView = (MyGLSurfaceView) findViewById(R.id.myGLSurfaceView);
-        //mSurfaceView.setEGLContextClientVersion(3);
-        //setContentView(mSurfaceView);
+        mSurfaceView = findViewById(R.id.myGLSurfaceView);
 
         mSurfaceView.setDebugFlags(GLSurfaceView.DEBUG_CHECK_GL_ERROR);
         mSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);

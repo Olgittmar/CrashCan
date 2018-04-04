@@ -5,6 +5,8 @@ import android.opengl.EGLContext;
 import android.opengl.GLES30;
 import android.opengl.GLES32;
 import android.opengl.GLSurfaceView;
+import android.opengl.GLU;
+import android.opengl.GLUtils;
 import android.opengl.Matrix;
 import android.support.annotation.IntDef;
 import android.util.Log;
@@ -57,6 +59,8 @@ public class myRenderer implements GLSurfaceView.Renderer {
         GLES30.glLinkProgram(mProgram);
         GLES30.glValidateProgram(mProgram);
 
+        Log.d("debug", "myRenderer:62 " + GLU.gluErrorString(GLES30.glGetError()));
+
         int[] linkStatus = new int[1];
         GLES30.glGetProgramiv(mProgram, GLES30.GL_LINK_STATUS, linkStatus, 0);
         if (linkStatus[0] != GLES30.GL_TRUE) {
@@ -108,6 +112,7 @@ public class myRenderer implements GLSurfaceView.Renderer {
         // Note that the mMVPMatrix factor *must be first* in order
         // for the matrix multiplication product to be correct.
         Matrix.multiplyMM(scratch, 0, mMVPMatrix, 0, mRotationMatrix, 0);
+        Log.d("debug", "myRenderer:115 " + GLU.gluErrorString(GLES30.glGetError()));
 
         // Draw models
         if (!ModelList.isEmpty()){

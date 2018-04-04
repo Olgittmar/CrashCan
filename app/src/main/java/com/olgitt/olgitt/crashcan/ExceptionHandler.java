@@ -12,7 +12,7 @@ public class ExceptionHandler implements
     private final Activity myContext;
     private final String LINE_SEPARATOR = "\n";
 
-    private ExceptionHandler( Activity context ) {
+    public ExceptionHandler( Activity context ) {
         myContext = context;
     }
 

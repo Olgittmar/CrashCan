@@ -1,13 +1,13 @@
 package com.olgitt.olgitt.crashcan;
 
 import android.content.Context;
-import android.nfc.Tag;
 import android.opengl.GLES20;
 import android.opengl.GLES30;
-import android.opengl.GLES32;
+import android.opengl.GLU;
 import android.util.Log;
 
 import com.jme3.math.Vector3f;
+import com.jme3.scene.mesh.IndexBuffer;
 import com.mokiat.data.front.parser.OBJDataReference;
 import com.mokiat.data.front.parser.OBJFace;
 import com.mokiat.data.front.parser.OBJMesh;
@@ -17,44 +17,29 @@ import com.mokiat.data.front.parser.OBJObject;
 import com.mokiat.data.front.parser.OBJTexCoord;
 import com.mokiat.data.front.parser.OBJVertex;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import java.nio.charset.Charset;
+import java.nio.ShortBuffer;
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 import java.util.ListIterator;
 
-import static android.content.ContentValues.TAG;
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 
 public class myModel extends OBJModel{
 
     private static final int COORDS_PER_VERTEX = 3;
 
-
     // Use to access and set the view transformation
     private int mMVPMatrixHandle;
     private OBJModel myResModel = new OBJModel();
 
     private FloatBuffer vertexBuffer;
-    private FloatBuffer textureBuffer;
     private FloatBuffer normalBuffer;
-    private IntBuffer indexBuffer;
+    private FloatBuffer textureBuffer;
+    private ShortBuffer mIndexBuffer;
 
-    private int mPositionHandle;
-    private int mColorHandle;
-    private int mNormalHandle;
 
     private Vector3f position = new Vector3f(0.0f, 0.0f, 0.0f);
 
@@ -62,6 +47,7 @@ public class myModel extends OBJModel{
     public myModel( String filename, Context context) {
 
         myResModel = modelUtils.LoadModel(filename, context);
+
 
         // set the buffer to read the first coordinate
         int numOfVerts = myResModel.getVertices().size()*3;
@@ -71,32 +57,33 @@ public class myModel extends OBJModel{
         float[] vertexArray = new float[numOfVerts];
         float[] normalArray = new float[numOfNorms];
         float[] texCoordArray = new float[numOfTexs];
+        ArrayList<Short> indexArray = new ArrayList<Short>();
 
         if (myResModel != null){
-            int intBufferSize = numOfVerts* Integer.SIZE;
-            indexBuffer = ByteBuffer.allocateDirect(intBufferSize)
-                    .order(ByteOrder.nativeOrder()).asIntBuffer();
 
             for (OBJObject object : myResModel.getObjects()) {
                 for (OBJMesh mesh : object.getMeshes()) {
                     final String materialName = mesh.getMaterialName();
-                    for(OBJFace face: mesh.getFaces()){
-                        for(OBJDataReference ref: face.getReferences()){
-                            indexBuffer.put(ref.vertexIndex);
+
+                    for(OBJFace face : mesh.getFaces()){
+                        for(OBJDataReference ref : face.getReferences()){
+                            if(ref.hasVertexIndex()){
+                            indexArray.add((short)ref.vertexIndex);
+                            }
                         }
                     }
                 }
             }
 
-
-
-
+            mIndexBuffer = ByteBuffer.allocateDirect(indexArray.size()* Short.BYTES)
+                    .order(ByteOrder.nativeOrder()).asShortBuffer();
+            for(short index : indexArray){
+                mIndexBuffer.put(index);
+            }
+            mIndexBuffer.position(0);
 
             if(!myResModel.getVertices().isEmpty()) {
-                int vertBufferSize = numOfVerts*Float.SIZE;
 
-                vertexBuffer = ByteBuffer.allocateDirect(vertBufferSize)
-                        .order(ByteOrder.nativeOrder()).asFloatBuffer();
                 for(ListIterator<OBJVertex> vertexIterator = myResModel.getVertices().listIterator();
                     vertexIterator.hasNext();) {
                     int i = vertexIterator.nextIndex();
@@ -105,14 +92,16 @@ public class myModel extends OBJModel{
                     vertexArray[i + 1] = v.y;
                     vertexArray[i + 2] = v.z;
                 }
+                
+                int vertBufferSize = numOfVerts* Float.BYTES;
+                vertexBuffer = ByteBuffer.allocateDirect(vertBufferSize)
+                        .order(ByteOrder.nativeOrder()).asFloatBuffer();
                 vertexBuffer.put(vertexArray).position(0);
             }
 
+
             if(!myResModel.getNormals().isEmpty()) {
-                int normBufferSize = numOfNorms*Float.SIZE;
-                normalBuffer = ByteBuffer.allocateDirect(normBufferSize)
-                        .order(ByteOrder.nativeOrder()).asFloatBuffer();
-                for(ListIterator<OBJNormal> normalIterator = myResModel.getNormals().listIterator();
+               for(ListIterator<OBJNormal> normalIterator = myResModel.getNormals().listIterator();
                     normalIterator.hasNext();) {
                     int i = normalIterator.nextIndex();
                     OBJNormal n = normalIterator.next();
@@ -120,13 +109,14 @@ public class myModel extends OBJModel{
                     normalArray[i + 1] = n.y;
                     normalArray[i + 2] = n.z;
                 }
+                int normBufferSize = numOfNorms* Float.BYTES;
+                normalBuffer = ByteBuffer.allocateDirect(normBufferSize)
+                        .order(ByteOrder.nativeOrder()).asFloatBuffer();
                 normalBuffer.put(normalArray).position(0);
             }
 
+
             if(!myResModel.getTexCoords().isEmpty()) {
-                int texBufferSize = numOfTexs*Float.SIZE;
-                textureBuffer = ByteBuffer.allocateDirect(texBufferSize)
-                        .order(ByteOrder.nativeOrder()).asFloatBuffer();
                 for(ListIterator<OBJTexCoord> texCoordIterator = myResModel.getTexCoords().listIterator();texCoordIterator.hasNext();) {
                     int i = texCoordIterator.nextIndex();
                     OBJTexCoord texCoord = texCoordIterator.next();
@@ -134,86 +124,101 @@ public class myModel extends OBJModel{
                     texCoordArray[i + 1] = texCoord.v;
                     texCoordArray[i + 2] = texCoord.w;
                 }
+                int texBufferSize = numOfTexs* Float.BYTES;
+                textureBuffer = ByteBuffer.allocateDirect(texBufferSize)
+                        .order(ByteOrder.nativeOrder()).asFloatBuffer();
                 textureBuffer.put(texCoordArray).position(0);
-
             }
         }
-
-
     }
 
 
 
     public void draw(float[] mvpMatrix, int mProgram) {
 
-        int vertexCount = myResModel.getVertices().size();
         // Add program to OpenGL ES environment
         GLES30.glUseProgram(mProgram);
+        final int vertCount = vertexBuffer.capacity();
 
-        // get handle to vertex shader's vPosition member
-        mPositionHandle = GLES30.glGetAttribLocation(mProgram, "vPosition");
-        // Enable a handle to the triangle vertices
+        //Vertices
+        int[] vertVBO = new int[1];
+        GLES30.glGenBuffers(1, vertVBO, 0);
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, vertVBO[0]);
+        Log.d("debug","\nbufferData:vertexBuffer: " + GLU.gluErrorString(GLES30.glGetError()));
+        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER,
+                vertCount*4,
+                vertexBuffer, GLES30.GL_STATIC_DRAW);
+
+        int mPositionHandle = GLES30.glGetAttribLocation(mProgram, "vPosition");
+        Log.d("debug", "\ngetAttribLoc:vPos: " + GLU.gluErrorString(GLES30.glGetError()));
+
         GLES30.glEnableVertexAttribArray(mPositionHandle);
+        Log.d("debug","\nenableVertArray:mPosHandle " + GLU.gluErrorString(GLES30.glGetError()));
 
-//        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, mPositionHandle);
-//        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER,
-//                vertexBuffer.capacity()*3,
-//                vertexBuffer,
-//                GLES30.GL_STATIC_DRAW);
-
-        // Prepare the triangle coordinate data
-        GLES30.glVertexAttribPointer(mPositionHandle, COORDS_PER_VERTEX,
+        GLES30.glVertexAttribPointer(mPositionHandle,
+                3,
                 GLES30.GL_FLOAT, false,
                 0, 0);
-        GLES30.glEnableVertexAttribArray(mPositionHandle);
+        Log.d("debug","\nvertAttribPointer:mPosHandle: " + GLU.gluErrorString(GLES30.glGetError()));
+
+        //Normals
+        int[] normVBO = new int[1];
+        GLES30.glGenBuffers(1, normVBO, 0);
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, normVBO[0]);
+        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER,
+                vertCount*4,
+                normalBuffer, GLES30.GL_STATIC_DRAW);
+        Log.d("debug","\nbufferData:normalBuffer " + GLU.gluErrorString(GLES30.glGetError()));
+
+        int mNormalHandle = GLES30.glGetAttribLocation(mProgram, "vNormal");
+        Log.d("debug", "\ngetAttribLoc:vNorm: " + GLU.gluErrorString(GLES30.glGetError()));
+        // Enable a handle to the vertex colors
+        GLES30.glEnableVertexAttribArray(mNormalHandle);
+        Log.d("debug", "\nenableVertArray:mNormHandle: " + GLU.gluErrorString(GLES30.glGetError()));
+
+        GLES30.glVertexAttribPointer(mNormalHandle,
+                3,
+                GLES30.GL_FLOAT, false,
+                0, 0);
+        Log.d("debug", "\nvertAttribPointer:mNormHandle: " + GLU.gluErrorString(GLES30.glGetError()));
+
+//        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, buffers[2]);
+//        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER,
+//                vertCount,
+//                textureBuffer, GLES30.GL_STATIC_DRAW);
 
 
-
-
-        if (normalBuffer.hasRemaining()){
-            // get handle to fragment shader's vColor member
-            mNormalHandle = GLES30.glGetAttribLocation(mProgram, "vNormal");
-            // Enable a handle to the vertex colors
-            GLES30.glEnableVertexAttribArray(mNormalHandle);
-
-            GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, mNormalHandle);
-            GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER,
-                    normalBuffer.capacity()*3,
-                    normalBuffer,
-                    GLES30.GL_STATIC_DRAW);
-            // Set colors
-            GLES30.glVertexAttribPointer(mNormalHandle, COORDS_PER_VERTEX,
-                    GLES30.GL_FLOAT, false,
-                    3 * Float.SIZE, 0);
-        }
-/*
-        if (textureBuffer.hasRemaining()) {
-            // get handle to fragment shader's vColor member
-            mColorHandle = GLES30.glGetUniformLocation(mProgram, "vColor");
+/*        if (textureBuffer.hasRemaining()) {
+            GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, buffers[2]);
             // Enable a handle to the vertex colors
             GLES30.glEnableVertexAttribArray(mColorHandle);
             // Set colors
-            GLES30.glVertexAttribPointer(mColorHandle, COORDS_PER_VERTEX,
+            GLES30.glVertexAttribPointer(mColorHandle,
+                    vertCount,
                     GLES30.GL_FLOAT, false,
-                    3 * Float.SIZE, textureBuffer);
+                    0, 0);
+            GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER,0);
         }*/
 
-        //just a placeholder for now
-        mColorHandle = GLES30.glGetUniformLocation(mProgram, "vColor");
-        GLES30.glUniform4f(mColorHandle, 0.3f, 0.3f,0.3f, 0.0f);
 
+        //just a placeholder for now
+        int mColorHandle = GLES30.glGetUniformLocation(mProgram, "vColor");
+        Log.d("debug","\nmyModel:glGetUniformLoc:vColor " + GLU.gluErrorString(GLES30.glGetError()));
+        GLES30.glUniform4f(mColorHandle, 1.0f, 1.0f,1.0f, 1.0f);
+        Log.d("debug","\nmyModel:glUniform:vColor " + GLU.gluErrorString(GLES30.glGetError()));
 
         // get handle to shape's transformation matrix
         mMVPMatrixHandle = GLES30.glGetUniformLocation(mProgram, "uMVPMatrix");
         // Pass the projection and view transformation to the shader
         GLES30.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mvpMatrix, 0);
 
-
         // Draw the model triangles
-        GLES30.glDrawElements(GLES30.GL_TRIANGLES, vertexCount, GLES30.GL_UNSIGNED_BYTE, indexBuffer);
+        GLES30.glDrawElements(GLES30.GL_TRIANGLES,
+                mIndexBuffer.capacity(),
+                GLES30.GL_UNSIGNED_BYTE,
+                mIndexBuffer);
+        Log.d("debug","\nmyModel:drawElements " + GLU.gluErrorString(GLES30.glGetError()));
     }
-
-    //public int getmProgram() {return mProgram;}
 
     public String getVertShader(){
         return "vertexShader";
