@@ -223,7 +223,7 @@ public class myModel extends OBJModel{
     }
 
 
-  //TODO: create a init function to setup the VAO and VBOs and all that.
+    
     public void draw(float[] mvpMatrix, int mProgram) {
 
         // Add program to OpenGL ES environment
