@@ -41,7 +41,10 @@ public class myRenderer implements GLSurfaceView.Renderer {
 
     //init function
     public void onSurfaceCreated( GL10 gl10, EGLConfig eglConfig) {
+        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
         GLES30.glClearColor(0.0f,0.0f,0.0f,1.0f);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+
 
         //init shaders
         String vertexShaderCode = modelUtils.loadShaderString("vertShader.vert", parentContext);
@@ -80,13 +83,14 @@ public class myRenderer implements GLSurfaceView.Renderer {
     //display
     public void onSurfaceChanged( GL10 gl10, int Width, int Height) {
         GLES30.glViewport(0,0, Width, Height);
-
-
         float ratio = (float) Width / Height;
 
         // this projection matrix is applied to object coordinates
         // in the onDrawFrame() method
-        Matrix.frustumM(mProjectionMatrix, 0, -ratio, ratio, bottom, top, near, far);
+        Matrix.frustumM(mProjectionMatrix, 0,
+                -ratio, ratio,
+                bottom, top,
+                near, far);
 
     }
 
@@ -103,10 +107,13 @@ public class myRenderer implements GLSurfaceView.Renderer {
                 0f, 1.0f, 0.0f);
 
         // Calculate the projection and view transformation
-        Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mViewMatrix, 0);
+        Matrix.multiplyMM(mMVPMatrix, 0,
+                mProjectionMatrix, 0,
+                mViewMatrix, 0);
 
         // Create a rotation transformation for the triangle
-        Matrix.setRotateM(mRotationMatrix, 0, 0, 0, 0, -1.0f);
+        Matrix.setRotateM(mRotationMatrix, 0,
+                0, 0, 0, -1.0f);
 
         // Combine the rotation matrix with the projection and camera view
         // Note that the mMVPMatrix factor *must be first* in order
