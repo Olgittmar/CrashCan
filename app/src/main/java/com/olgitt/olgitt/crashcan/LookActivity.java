@@ -27,9 +27,9 @@ public class LookActivity extends Activity {
     @Override
     public void onCreate( Bundle savedInstanceState ) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_look);
 
         //init surfaceView
-        setContentView(R.layout.activity_look);
         mSurfaceView = findViewById(R.id.myGLSurfaceView);
 
         mSurfaceView.setDebugFlags(GLSurfaceView.DEBUG_CHECK_GL_ERROR);

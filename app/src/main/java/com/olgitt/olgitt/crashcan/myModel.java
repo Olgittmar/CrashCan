@@ -4,6 +4,7 @@ import android.content.Context;
 import android.opengl.GLES20;
 import android.opengl.GLES30;
 import android.opengl.GLU;
+import android.opengl.Matrix;
 import android.util.Log;
 
 import com.jme3.math.Vector3f;
@@ -41,7 +42,13 @@ public class myModel extends OBJModel{
     private ShortBuffer mIndexBuffer;
 
 
+    private int numIndices = 0;
+    private int[] VAO = new int[1];
+
+
     private Vector3f position = new Vector3f(0.0f, 0.0f, 0.0f);
+    private Vector3f lookAt = new Vector3f(0.0f, 0.0f, 1.0f);
+    private Vector3f upDir = new Vector3f(0.0f, 1.0f, 0.0f);
 
 
     public myModel( String filename, Context context) {
@@ -68,7 +75,7 @@ public class myModel extends OBJModel{
                     for(OBJFace face : mesh.getFaces()){
                         for(OBJDataReference ref : face.getReferences()){
                             if(ref.hasVertexIndex()){
-                            indexArray.add((short)(ref.vertexIndex + 1));
+                            indexArray.add((short)(ref.vertexIndex));
                             }
                         }
                     }
@@ -81,6 +88,7 @@ public class myModel extends OBJModel{
                 mIndexBuffer.put(indexArray.get(index));
             }
             mIndexBuffer.position(0);
+            numIndices = mIndexBuffer.capacity();
 
             if(!myResModel.getVertices().isEmpty()) {
 
@@ -132,16 +140,16 @@ public class myModel extends OBJModel{
         }
     }
 
-
-  //TODO: create a init function to setup the VAO and VBOs and all that.
-    public void draw(float[] mvpMatrix, int mProgram) {
-
-        // Add program to OpenGL ES environment
+    public void init(int mProgram){
         GLES30.glUseProgram(mProgram);
-        final int vertCount = myResModel.getVertices().size();
-        int numIndices = mIndexBuffer.capacity();
 
-        int[] VAO = new int[1];
+        float[] scratch = {-1.0f, 0.0f, 0.0f, 0.0f,
+                            0.0f, 2.0f, 0.0f, 0.0f,
+                            0.0f, 0.0f, 2.0f, 1.0f,
+                            0.0f, 0.0f,-0.2f, 3.0f};
+
+        final int vertCount = myResModel.getVertices().size();
+
         int[] normVBO = new int[1];
         int[] vertVBO = new int[1];
         int[] indexVBO = new int[1];
@@ -208,14 +216,33 @@ public class myModel extends OBJModel{
         // get handle to shape's transformation matrix
         mMVPMatrixHandle = GLES30.glGetUniformLocation(mProgram, "uMVPMatrix");
         // Pass the projection and view transformation to the shader
+        GLES30.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, scratch, 0);
+
+        //unbind the VAO
+        GLES30.glBindVertexArray(0);
+    }
+
+
+  //TODO: create a init function to setup the VAO and VBOs and all that.
+    public void draw(float[] mvpMatrix, int mProgram) {
+
+        // Add program to OpenGL ES environment
+        GLES30.glUseProgram(mProgram);
+        GLES30.glBindVertexArray(VAO[0]);
+
+        mMVPMatrixHandle = GLES30.glGetUniformLocation(mProgram, "uMVPMatrix");
+        // Pass the projection and view transformation to the shader
         GLES30.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mvpMatrix, 0);
 
+        int mLightHandle = GLES30.glGetUniformLocation(mProgram, "vLight");
+        GLES30.glUniform3f(mLightHandle, 0.0f, 0.3f,2.0f);
 
         // Draw the model triangles
         GLES30.glDrawElements(GLES30.GL_TRIANGLES,
                 numIndices,
                 GLES30.GL_UNSIGNED_SHORT,
                 0);
+
         Log.d("debug","\nmyModel:drawElements " + GLU.gluErrorString(GLES30.glGetError()));
         GLES30.glBindVertexArray(0);
     }

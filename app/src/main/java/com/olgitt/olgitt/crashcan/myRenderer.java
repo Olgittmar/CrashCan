@@ -26,6 +26,7 @@ public class myRenderer implements GLSurfaceView.Renderer {
 
     private ArrayList<myModel> ModelList = new ArrayList<myModel>();
     private Context parentContext;
+
     // mMVPMatrix is an abbreviation for "Model View Projection Matrix"
     private float[] mMVPMatrix = new float[16];
     private float[] mProjectionMatrix = new float[16];
@@ -41,8 +42,11 @@ public class myRenderer implements GLSurfaceView.Renderer {
 
     //init function
     public void onSurfaceCreated( GL10 gl10, EGLConfig eglConfig) {
+
+        //Init openGL
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
         GLES30.glClearColor(0.0f,0.0f,0.0f,1.0f);
+        GLES30.glEnable(GLES30.GL_CULL_FACE);
         GLES30.glEnable(GLES30.GL_DEPTH_TEST);
 
 
@@ -74,10 +78,10 @@ public class myRenderer implements GLSurfaceView.Renderer {
 
         //init models
         myModel bunnyModel = new myModel("3DModels/bunnyplus.obj", parentContext);
+        bunnyModel.init(mProgram);
         ModelList.add(bunnyModel);
         //myModel skullModel = new myModel("3DModels/ReducedSkull.obj", this);
         //ModelList.add(skullModel);
-
     }
 
     //display
@@ -97,12 +101,13 @@ public class myRenderer implements GLSurfaceView.Renderer {
 
     //resizing the surfaceView
     public void onDrawFrame( GL10 gl10 ) {
+        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
+
         float[] scratch = new float[16];
 
-        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT);
         // Set the camera position (View matrix)
         Matrix.setLookAtM(mViewMatrix, 0,
-                0f, 0f, -3f,
+                0f, 0f, -3.0f,
                 0f, 0f, 0f,
                 0f, 1.0f, 0.0f);
 
@@ -113,7 +118,7 @@ public class myRenderer implements GLSurfaceView.Renderer {
 
         // Create a rotation transformation for the triangle
         Matrix.setRotateM(mRotationMatrix, 0,
-                0, 0, 0, -1.0f);
+                0, 0, 0, 1.0f);
 
         // Combine the rotation matrix with the projection and camera view
         // Note that the mMVPMatrix factor *must be first* in order
