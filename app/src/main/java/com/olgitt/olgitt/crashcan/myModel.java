@@ -223,7 +223,7 @@ public class myModel extends OBJModel{
     }
 
 
-    
+
     public void draw(float[] mvpMatrix, int mProgram) {
 
         // Add program to OpenGL ES environment
