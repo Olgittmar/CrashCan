@@ -50,11 +50,12 @@ public class myModel extends OBJModel{
     private Vector3f lookAt = new Vector3f(0.0f, 0.0f, 1.0f);
     private Vector3f upDir = new Vector3f(0.0f, 1.0f, 0.0f);
 
+    private Vector3f velocity = new Vector3f(0.0f, 0.0f,0.0f);
+
 
     public myModel( String filename, Context context) {
 
         myResModel = modelUtils.LoadModel(filename, context);
-
 
         // set the buffer to read the first coordinate
         int numOfVerts = myResModel.getVertices().size()*3;

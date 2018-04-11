@@ -35,6 +35,7 @@ public class MyGLSurfaceView extends GLSurfaceView {
         float screenHeight = getHeight();
         float[] lookAtM = new float[16];
 
+
         switch (e.getAction()) {
             case MotionEvent.ACTION_MOVE:
 

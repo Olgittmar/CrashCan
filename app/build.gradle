@@ -29,6 +29,7 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
     implementation 'com.github.mokiat:java-data-front:v2.0.0'
+
     implementation "${jme3.g}:jme3-core:${jme3.v}"
     implementation "${jme3.g}:jme3-android:${jme3.v}"
     implementation "${jme3.g}:jme3-android-native:${jme3.v}"
