@@ -42,6 +42,8 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import static android.content.ContentValues.TAG;
+import static com.threed.jpct.Interact2D.projectCenter3D2D;
+import static com.threed.jpct.Interact2D.reproject2D3DWS;
 import static com.threed.jpct.Loader.loadOBJ;
 import static com.threed.jpct.Object3D.mergeAll;
 import static java.lang.Math.PI;
@@ -106,7 +108,7 @@ public class LookActivity extends Activity implements GLSurfaceView.Renderer , V
             Log.d(TAG,"\nloadedBunny: " + arrayLength + " and " + triangles );
             skull.setOrigin(skull.getCenter());
             skull.rotateZ((float) PI);
-            skull.translate(0, 0, 1.0f);
+            skull.translate(0, 0, 0.0f);
             skull.setCollisionMode(Object3D.COLLISION_CHECK_OTHERS);
             world.addObjects(skull);
 
@@ -118,7 +120,7 @@ public class LookActivity extends Activity implements GLSurfaceView.Renderer , V
 
             cam = new Camera();
             cam.setFOV(70);
-            cam.setPosition(0.0f,0.0f, -10.0f);
+            cam.setPosition(0.0f,0.0f, -15.0f);
             cam.lookAt(origin);
             world.setCameraTo(cam);
 
@@ -155,31 +157,48 @@ public class LookActivity extends Activity implements GLSurfaceView.Renderer , V
         TextureManager.getInstance().removeTexture("t1");
     }
 
-    private void moveObject(float x, float y){
+    private void moveObject(int x, int y, int dx, int dy){
         //TODO; Implement some way to select and move an object, preferrably through momentum.
+        SimpleVector dir = reproject2D3DWS(cam,
+                frameBuffer, x, y ).normalize();
+        Object[] res = world.calcMinDistanceAndObject3D(cam.getPosition(),
+                dir, 1000);
+        if(res[1] != null){
+            Object3D resObj = (Object3D) res[1];
+            Log.d(TAG, "\n(dX,dY) = (" +  dx + "," + dy + ")");
+
+            SimpleVector newPos = dir;
+            newPos.scalarMul((float)res[0]);
+            newPos.add(cam.getPosition());
+            resObj.translate(newPos.x, newPos.y, 0);
+            Log.d(TAG, "\n newPos = (" + newPos.x + ","+ newPos.y + "," + newPos.z + ")");
+        }
     }
 
-    private float lastX, lastY;
+    private int lastX, lastY;
     @Override
     public boolean onTouch(View v, MotionEvent event) {
         switch (event.getAction()){
             case MotionEvent.ACTION_DOWN:
-                lastX = event.getX();
-                lastY = event.getY();
+                lastX = (int) event.getX();
+                lastY = (int) event.getY();
+                Log.d(TAG, "\nLast(X,Y) = (" +  lastX + "," + lastY + ")");
                 return true;
             case MotionEvent.ACTION_MOVE:
-                final float currX = event.getX();
-                final float currY = event.getY();
-                final float dx = currX - lastX;
-                final float dy = currY - lastY;
+                final int currX = (int) (event.getX());
+                final int currY = (int) (event.getY());
+                final int dx = currX - lastX;
+                final int dy = currY - lastY;
                 glView.queueEvent(new Runnable() {
                     @Override
                     public void run() {
-                        moveObject(currX, currY);
+                        moveObject(currX, currY, dx, dy);
                     }
                 });
+                Log.d(TAG, "\nLast(X,Y) = (" +  lastX + "," + lastY + ")");
                 lastX = currX;
                 lastY = currY;
+                return true;
         }
         return false;
     }
