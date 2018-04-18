@@ -4,8 +4,7 @@
 
     <uses-feature
         android:name="android.hardware.touchscreen"
-        android:required="false" />
-
+        android:required="true" />
 
     <!-- Tell the system this app requires OpenGL ES 3.0. -->
     <uses-feature
@@ -29,7 +28,7 @@
         <activity android:name=".CrashActivity" />
 
         <activity
-            android:name="com.olgitt.olgitt.crashcan.LookActivity"
+            android:name=".LookActivity"
             android:parentActivityName=".MainActivity"
             android:screenOrientation="landscape"
             >
