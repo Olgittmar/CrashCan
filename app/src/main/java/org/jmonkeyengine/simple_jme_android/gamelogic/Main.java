@@ -29,6 +29,7 @@ import com.jme3.math.Ray;
 import com.jme3.math.Vector2f;
 import com.jme3.math.Vector3f;
 import com.jme3.post.FilterPostProcessor;
+import com.jme3.renderer.queue.GeometryList;
 import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
@@ -41,6 +42,8 @@ import com.jme3.shadow.PointLightShadowRenderer;
 import com.jme3.texture.Texture;
 import com.jme3.util.TangentBinormalGenerator;
 
+import java.util.Iterator;
+import java.util.List;
 import java.util.logging.Logger;
 
 import static android.content.ContentValues.TAG;
@@ -52,18 +55,16 @@ import static android.content.ContentValues.TAG;
 public class Main extends SimpleApplication {
     private static final Logger logger = Logger.getLogger(Main.class.getName());
 
-    private Spatial skull;
-    private RigidBodyControl skull_phy;
+    private Node skull;
+    private RigidBodyControl[] skull_phy = new RigidBodyControl[46];
+    private RigidBodyControl skull_phy_wrap;
     private Spatial room;
     private RigidBodyControl room_phy;
     private Node selectable;
     private BulletAppState bulletAppState;
-    private DirectionalLightShadowRenderer dlsr;
-    private DirectionalLightShadowFilter dlsf;
 
     private static final Plane ZPlane = new Plane(new Vector3f(0.0f,0.0f,1.0f), 0);
-    private static final Vector3f gravity = new Vector3f(0.0f, -9.82f,0.0f);
-    private static final float centralForce = 10.0f;
+    private static final Vector3f gravity = new Vector3f(0.0f, -10.0f,0.0f);
 
     @Override
     public void simpleInitApp() {
@@ -95,14 +96,14 @@ public class Main extends SimpleApplication {
                 new Vector3f(0.0f, -0.5f, -1.0f));
         zedLight.setColor(ColorRGBA.DarkGray);
         rootNode.addLight(zedLight);
-        
+
 
         AmbientLight sun = new AmbientLight();
         sun.setColor(ColorRGBA.DarkGray);
         rootNode.addLight(sun);
     }
 
-    private void setupModels(){
+    private void setupModels() {
         //room geometry
         room = assetManager.loadModel("Models/CrashBox.obj");
         Material wallMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
@@ -121,25 +122,31 @@ public class Main extends SimpleApplication {
         room.setShadowMode(RenderQueue.ShadowMode.Cast);
         bulletAppState.getPhysicsSpace().add(room_phy);
 
-        //Skull geometry
-        skull = assetManager.loadModel("Models/ReducedSkull.obj");
+
         Material mat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
         mat.setBoolean("UseMaterialColors", true);
         mat.setColor("Ambient", ColorRGBA.White);
         mat.setColor("Diffuse", ColorRGBA.White);
-        skull.setMaterial(mat);
-        skull.setLocalTranslation(0.0f, 0.0f, 0.0f);
-        skull.scale(0.3f);
-        skull.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-        selectable.attachChild(skull);
 
-        //Skull physics
-        skull_phy = new RigidBodyControl(1);
-        skull.addControl(skull_phy);
-        skull_phy.setGravity(gravity);
-        skull_phy.setPhysicsLocation(skull.getLocalTranslation());
-        skull_phy.setLinearFactor(new Vector3f(1.0f, 1.0f, 0.0f));
-        bulletAppState.getPhysicsSpace().add(skull_phy);
+        //Skull geometry
+        skull = (Node) assetManager.loadModel("Models/crashingCube.scene");
+        skull.setLocalScale(0.2f);
+
+        if (skull.getChildren() != null){
+            for (int i = 0; i < 45; i++ ) {
+                Node skullPart = (Node) skull.getChild(i);
+                skullPart.setMaterial(mat);
+                //Skull physics
+                skull_phy[i] = new RigidBodyControl(1/46f);
+                skullPart.addControl(skull_phy[i]);
+                skull_phy[i].setGravity(gravity);
+                skull_phy[i].setPhysicsLocation(skull.getLocalTranslation());
+                skull_phy[i].setLinearFactor(new Vector3f(1.0f, 1.0f, 0.0f));
+                bulletAppState.getPhysicsSpace().add(skull_phy[i]);
+            }
+            skull_phy_wrap = new RigidBodyControl(1);
+        selectable.attachChild(skull);
+        }
     }
 
 
