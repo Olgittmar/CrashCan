@@ -8,6 +8,8 @@ import com.jme3.app.AndroidHarnessFragment;
 public class JmeFragment extends AndroidHarnessFragment {
 
     public JmeFragment() {
+        //This is a setup for the interaction between android and jME3
+
         // Set main project class (fully qualified path)
         appClass = "org.jmonkeyengine.simple_jme_android.gamelogic.Main";
 
