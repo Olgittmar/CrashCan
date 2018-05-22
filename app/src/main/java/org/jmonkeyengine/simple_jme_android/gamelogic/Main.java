@@ -47,7 +47,7 @@ import static android.content.ContentValues.TAG;
  * Edited by Olgitt from 24/4/2018
  */
 // should probably clarify that what remains of the template is the manifest,
-// the jmeFragment, the mainActivity and the logger line in this file
+// the jmeFragment, the mainActivity, the folders and the logger line in this file
 public class Main extends SimpleApplication implements PhysicsCollisionListener{
     private static final Logger logger = Logger.getLogger(Main.class.getName());
 
