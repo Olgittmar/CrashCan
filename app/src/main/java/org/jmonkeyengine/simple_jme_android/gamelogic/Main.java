@@ -46,19 +46,27 @@ import static android.content.ContentValues.TAG;
  * Basic template created by potterec on 3/17/2016.
  * Edited by Olgitt from 24/4/2018
  */
+// should probably clarify that what remains of the template is the manifest,
+// the jmeFragment, the mainActivity and the logger line in this file
 public class Main extends SimpleApplication implements PhysicsCollisionListener{
     private static final Logger logger = Logger.getLogger(Main.class.getName());
 
+    //all objects with corresponding physics bodies
     private Node box;
     private RigidBodyControl skull_phy;
     private Spatial room;
     private RigidBodyControl room_phy;
     private Node fish;
     private RigidBodyControl fish_phy;
+
+    //main node and physic state
     private Node selectable;
     private BulletAppState bulletAppState;
 
+    //threshold for when objects should break, might be individual later on
     private static final float threshold = 3.0f;
+
+    //helper vectors and plane for things i use often
     private static final Plane ZPlane = new Plane(new Vector3f(0.0f,0.0f,1.0f), 0);
     private static final Vector3f gravity = new Vector3f(0.0f, -20.0f,0.0f);
     private static final Vector3f linearFactor = new Vector3f(1.0f, 1.0f, 0.0f);
@@ -66,6 +74,7 @@ public class Main extends SimpleApplication implements PhysicsCollisionListener{
 
     @Override
     public void simpleInitApp() {
+
         //Initialize the settings for the GLView
         setDisplayFps(false);
         setDisplayStatView(false);
@@ -123,6 +132,7 @@ public class Main extends SimpleApplication implements PhysicsCollisionListener{
         wallMat.setColor("Ambient", ColorRGBA.White);
         wallMat.setColor("Diffuse", ColorRGBA.White);
         room.setMaterial(wallMat);
+
         //rotate the room properly, probably exported the model wrong
         room.rotate((float) Math.PI / 2, 0f, 0f);
         //resize the room to fill the screen
@@ -187,6 +197,9 @@ public class Main extends SimpleApplication implements PhysicsCollisionListener{
             //this way we can keep track of all the fracture positions while they are inactive
             //this is of course a performance loss, but so far it seems to impact the performance less
             //than trying to create the shapes when impact occurs.
+
+            //from what I've seen on the subject, trying to procedurally fracture objects on time of impact
+            // severely impacts performance, so it's better to do it this way.
             CollisionShape childShape = new HullCollisionShape(child.getMesh());
             RigidBodyControl childPhy = new RigidBodyControl(childShape, 1/ 46f);
             child.addControl(childPhy);
