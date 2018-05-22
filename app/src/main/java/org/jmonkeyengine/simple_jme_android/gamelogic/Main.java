@@ -49,7 +49,7 @@ import static android.content.ContentValues.TAG;
 public class Main extends SimpleApplication implements PhysicsCollisionListener{
     private static final Logger logger = Logger.getLogger(Main.class.getName());
 
-    private Node skull;
+    private Node box;
     private RigidBodyControl skull_phy;
     private Spatial room;
     private RigidBodyControl room_phy;
@@ -58,7 +58,7 @@ public class Main extends SimpleApplication implements PhysicsCollisionListener{
     private Node selectable;
     private BulletAppState bulletAppState;
 
-    private static final float threshold = 2.0f;
+    private static final float threshold = 3.0f;
     private static final Plane ZPlane = new Plane(new Vector3f(0.0f,0.0f,1.0f), 0);
     private static final Vector3f gravity = new Vector3f(0.0f, -20.0f,0.0f);
     private static final Vector3f linearFactor = new Vector3f(1.0f, 1.0f, 0.0f);
@@ -66,32 +66,39 @@ public class Main extends SimpleApplication implements PhysicsCollisionListener{
 
     @Override
     public void simpleInitApp() {
+        //Initialize the settings for the GLView
         setDisplayFps(false);
         setDisplayStatView(false);
+        //Initialize physics state
         bulletAppState = new BulletAppState();
         stateManager.attach(bulletAppState);
-
+        //Attach a node for sorting selectable models from everything else
         selectable = new Node("Selectable");
         rootNode.attachChild(selectable);
 
+        //helper functions for organizing the loading of models and lights
         setupLight();
         setupModels();
 
         cam.setLocation(new Vector3f(0.0f, 0.0f, 20.0f));
+        //disable flycam to disable unwanted control options
         flyCam.setEnabled(false);
 
+        //add mapping from touching the screen to object selection
         inputManager.addMapping("select", new TouchTrigger(TouchInput.ALL));
         inputManager.addListener(touchListener, new String[]{"select"});
+        //add a physics listener for shattering effects
         bulletAppState.getPhysicsSpace().addCollisionListener(this);
     }
 
     private void setupLight(){
+        //pretty self-explanatory
+
         PointLight lamp = new PointLight();
         lamp.setPosition(new Vector3f(0.0f, 2.5f, 4.0f));
         lamp.setColor(ColorRGBA.Gray);
         lamp.setRadius(50f);
         rootNode.addLight(lamp);
-
 
         DirectionalLight zedLight = new DirectionalLight(
                 new Vector3f(0.0f, -0.5f, -1.0f));
@@ -105,35 +112,40 @@ public class Main extends SimpleApplication implements PhysicsCollisionListener{
     }
 
     private void setupModels() {
+        //sets up the models, should probably have a general function for this
 
         //room geometry
+        //the room is an actual model, not a skybox, just to simplify collisions with the walls
         room = assetManager.loadModel("Models/CrashBox.obj");
+        //placeholder texture until I fix something cooler
         Material wallMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
         wallMat.setBoolean("UseMaterialColors", true);
         wallMat.setColor("Ambient", ColorRGBA.White);
         wallMat.setColor("Diffuse", ColorRGBA.White);
         room.setMaterial(wallMat);
+        //rotate the room properly, probably exported the model wrong
         room.rotate((float) Math.PI / 2, 0f, 0f);
+        //resize the room to fill the screen
         room.scale(5f);
         room.scale(1f, 2f, 1f);
         room.setLocalTranslation(0f, 0f, -4f);
+        //attach to rootnode to make it unselectable and visible.
+        // Equivalent to drawing in main graphics update with z-buffer and backface culling enabled.
         rootNode.attachChild(room);
 
-        //Room physics
+        //Room physics, simple boxes for collision
+        // mass = 0 => immovable object
         room_phy = new RigidBodyControl(0);
         room.addControl(room_phy);
-        room.setShadowMode(RenderQueue.ShadowMode.Cast);
         bulletAppState.getPhysicsSpace().add(room_phy);
 
-        Material mat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
-        mat.setBoolean("UseMaterialColors", true);
-        mat.setColor("Ambient", ColorRGBA.Blue);
-        mat.setColor("Diffuse", ColorRGBA.Blue);
-
         //Add a fish to throw
+        //the texture for the fish should be loaded with the model but for some reason it doesn't
+        //TODO investigate why texture doesn't load with model
         fish = (Node) assetManager.loadModel("Models/fish.fbx");
         fish.setLocalScale(0.02f);
         fish.setLocalTranslation(6f, -2f, 0f);
+        //fish is projectile and should not break
         fish.setUserData("isBreakable", false);
 
         //add physics to the fish
@@ -145,28 +157,36 @@ public class Main extends SimpleApplication implements PhysicsCollisionListener{
         bulletAppState.getPhysicsSpace().add(fish_phy);
         selectable.attachChild(fish);
 
+        //because I want to handle all objects similarly in the picking function
+        // all objects need the same structure
         for (Geometry child : getGeometries(fish)) {
             child.setUserData("parentPart", fish.getName().toString());
         }
 
 
-        //Skull geometry, for now skull = box
-        skull = (Node) assetManager.loadModel("Models/crashingCube.fbx");
-        skull.setLocalScale(1.5f);
-        skull.setLocalTranslation(-5f, -3f, 0f);
-        skull.setUserData("isBreakable", true);
-        String parentPart = skull.getName().toString();
-        Log.d(TAG, skull.getName());
+        //box geometry, no texture yet
+        // should add some granite-looking texture to hide the cracks
+        // or figure out how to layer models
+        box = (Node) assetManager.loadModel("Models/crashingCube.fbx");
+        box.setLocalScale(1.5f);
+        box.setLocalTranslation(-5f, -3f, 0f);
+        box.setUserData("isBreakable", true);
+        String parentPart = box.getName().toString();
+        Log.d(TAG, box.getName());
 
-        //Skull physics
+        //box physics
         skull_phy = new RigidBodyControl(1.0f);
-        skull.addControl(skull_phy);
+        box.addControl(skull_phy);
         skull_phy.setGravity(gravity);
-        skull_phy.setPhysicsLocation(skull.getLocalTranslation());
+        skull_phy.setPhysicsLocation(box.getLocalTranslation());
         skull_phy.setLinearFactor(linearFactor);
         bulletAppState.getPhysicsSpace().add(skull_phy);
 
-        for (Geometry child : getGeometries(skull)) {
+        for (Geometry child : getGeometries(box)) {
+            //set collisionshapes for the fractures but don't enable them
+            //this way we can keep track of all the fracture positions while they are inactive
+            //this is of course a performance loss, but so far it seems to impact the performance less
+            //than trying to create the shapes when impact occurs.
             CollisionShape childShape = new HullCollisionShape(child.getMesh());
             RigidBodyControl childPhy = new RigidBodyControl(childShape, 1/ 46f);
             child.addControl(childPhy);
@@ -178,15 +198,18 @@ public class Main extends SimpleApplication implements PhysicsCollisionListener{
             bulletAppState.getPhysicsSpace().add(childPhy);
         }
 
-        bulletAppState.getPhysicsSpace().addAll(skull);
-        //selectable.attachChild(skull);
-        rootNode.attachChild(skull);
+        bulletAppState.getPhysicsSpace().addAll(box);
+        //selectable.attachChild(box);
+        rootNode.attachChild(box);
 
     }
 
 
     @Override
     public void simpleUpdate(float tpf) {
+
+        //Nothing so far, haven't figured it out but
+        // I think this is where forces should be applied after an impact
 
     }
 
@@ -200,56 +223,69 @@ public class Main extends SimpleApplication implements PhysicsCollisionListener{
         public void onTouch(String name, TouchEvent event, float tpf) {
             if(event.getType() != TouchEvent.Type.IDLE){
 
+                //get touch coordinates on screen
                 Vector2f inCoo = new Vector2f();
                 inCoo.setX(event.getX());
                 inCoo.setY(event.getY());
+
+                //project to world coordinates
                 Vector3f origin = cam.getWorldCoordinates(inCoo, 0.0f).clone();
                 Vector3f dir = cam.getWorldCoordinates(inCoo, 0.3f).clone();
+                //ray cast in the direction from cam position to projected touch coordinates
                 Vector3f pickDir = dir.subtract(origin);
                 Ray ray = new Ray(cam.getLocation(), pickDir);
 
                 switch (event.getType()) {
                     case DOWN:
+                        //check if the ray collided with any object on screen that is selectable
                         CollisionResults results = new CollisionResults();
                         selectable.collideWith(ray, results);
                         Log.d(TAG, "Selected: " + results.size() + " things");
 
                         if (results.size() > 0) {
+                            //get the collided object that is closest to the screen
+                            //this way what you pick is what you get
                             CollisionResult closest = results.getClosestCollision();
 
+                            //if something was selected, temporarily turn it blue
 /*                            Material mat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
                             mat.setBoolean("UseMaterialColors", true);
                             mat.setColor("Ambient", ColorRGBA.Blue);
                             mat.setColor("Diffuse", ColorRGBA.Blue);*/
 
-
+                            //get the geometry of the collided object, eg the package containing the model
                             objHit = closest.getGeometry();
+                            //if we turn it blue, save material for when we release it
                             //lastMat = objHit.getMaterial();
-
-                            ray.intersectsWherePlane(ZPlane, startVel);
                             //closest.getGeometry().setMaterial(mat);
-                        }
+
+                            //check for where we touched the screen corresponds to the z = 0 -plane
+                            //save for setting velocity
+                            ray.intersectsWherePlane(ZPlane, startVel);
+                            }
                         break;
 
                     case MOVE:
+                        //draw an arrow from object to where we are touching?
                         break;
 
                     case UP:
                         Vector3f endVel = new Vector3f();
                         if(ray.intersectsWherePlane(ZPlane, endVel) && objHit != null) {
+                            //set velocity to scale with where we release
                             Vector3f velocity = endVel.subtract(startVel);
                             //for some reason this feels more natural
                             velocity.setY(velocity.y*1.3f);
                             velocity.setZ(0f);
                             velocity = velocity.mult(3f);
+
+                            //set a max speed
                             if(velocity.length() > 20f){
                                 velocity = velocity.normalize().mult(20f);
                             }
 
-                            //if the thing is Not part of a bigger object, throw it
-                            //Otherwise, throw the bigger object.
+                            //check if what we are throwing is a fragment or a node
                             Spatial parentPart = selectable.getChild((String) objHit.getUserData("parentPart"));
-
                             if (objHit.getControl(RigidBodyControl.class) != null) {
                                 objHit.getControl(RigidBodyControl.class).setLinearVelocity(velocity);
                             } else if (parentPart.getControl(RigidBodyControl.class).isEnabled()){
@@ -269,6 +305,8 @@ public class Main extends SimpleApplication implements PhysicsCollisionListener{
 
     };
 
+    //from jme3 contributor Dokthar:
+    // https://hub.jmonkeyengine.org/t/spatial-get-sub-mesh/34593/6
     private List<Geometry> getGeometries(Spatial spatial) {
         final List<Geometry> geoms = new LinkedList<Geometry>();
         if (spatial instanceof Geometry) {
@@ -289,31 +327,43 @@ public class Main extends SimpleApplication implements PhysicsCollisionListener{
     //Check if either of the collided objects are breakable
     //If so, get the force of impact and calculate level of destruction
     //give a number of fracture-cells their own physics based on the level of destruction
-    //Maybe apply an impulse to the cells
     @Override
     public void collision(PhysicsCollisionEvent event) {
+        //get objects involved
         Spatial A = event.getNodeA();
         Spatial B = event.getNodeB();
+        //applied impulse corresponds to the magnitude of impact between A and B
         float appliedImpulse = event.getAppliedImpulse();
         if (appliedImpulse > 0.5f){
             Log.d(TAG, "impulse: " + appliedImpulse);
         }
+
+        //need to do the check twice because there is no knowing which obect is A or B
         if (A instanceof Node) {
+            //if it isn't a Node it definetly isn't breakable
             if (A.getUserData("isBreakable")) {
+                //if it is a Node, it might still just be a grouping
                 if (((Node) A).getQuantity() > 0) {
+                    //not sure if this check is really needed but better safe than sorry
+
+                    //check if impact was greater than required threshold for breaking
                     if (appliedImpulse > threshold) {
 
                         //Get all children of A
                         List<Geometry> childrenSource = getGeometries(A);
                         A.getControl(RigidBodyControl.class).setEnabled(false);
 
-                        Vector3f impactPoint = event.getLocalPointA();
+                        //for now, fracture the whole thing
+                        // later fracture only the parts closest to impact
 
-
+                        //need to figure out an algorithm for choosing what parts to fracture and
+                        // how to make them fly away from the impact
                         for (Geometry child : childrenSource) {
                             RigidBodyControl childPhy = child.getControl(RigidBodyControl.class);
                             childPhy.setEnabled(true);
 
+
+                            //this just made the whole thing explode violently
 /*                            Vector3f center = childPhy.getPhysicsLocation();
                             Vector3f impulse = center.subtract(impactPoint).normalize();
                             impulse.mult(event.getAppliedImpulse()*0.0000001f);
@@ -330,10 +380,7 @@ public class Main extends SimpleApplication implements PhysicsCollisionListener{
                     if (appliedImpulse > threshold) {
 
                         List<Geometry> childrenSource = getGeometries(B);
-
                         B.getControl(RigidBodyControl.class).setEnabled(false);
-
-                        Vector3f impactPoint = event.getLocalPointB();
 
                         for (Spatial child : childrenSource) {
                             RigidBodyControl childPhy = child.getControl(RigidBodyControl.class);
